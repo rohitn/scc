@@ -289,6 +289,98 @@ func toCSV(input chan *FileJob) string {
 	return b.String()
 }
 
+// TODO: Write tests for toCSVTable
+func toCSVTable(input chan *FileJob) string {
+	languages := map[string]LanguageSummary{}
+	var sumFiles, sumLines, sumCode, sumComment, sumBlank, sumComplexity, sumBytes int64 = 0, 0, 0, 0, 0, 0, 0
+
+	for res := range input {
+		sumFiles++
+		sumLines += res.Lines
+		sumCode += res.Code
+		sumComment += res.Comment
+		sumBlank += res.Blank
+		sumComplexity += res.Complexity
+		sumBytes += res.Bytes
+
+		_, ok := languages[res.Language]
+
+		if !ok {
+			files := []*FileJob{}
+			files = append(files, res)
+
+			languages[res.Language] = LanguageSummary{
+				Name:       res.Language,
+				Lines:      res.Lines,
+				Code:       res.Code,
+				Comment:    res.Comment,
+				Blank:      res.Blank,
+				Complexity: res.Complexity,
+				Count:      1,
+				Files:      files,
+				Bytes:      res.Bytes,
+			}
+		} else {
+			tmp := languages[res.Language]
+			files := append(tmp.Files, res)
+
+			languages[res.Language] = LanguageSummary{
+				Name:       res.Language,
+				Lines:      tmp.Lines + res.Lines,
+				Code:       tmp.Code + res.Code,
+				Comment:    tmp.Comment + res.Comment,
+				Blank:      tmp.Blank + res.Blank,
+				Complexity: tmp.Complexity + res.Complexity,
+				Count:      tmp.Count + 1,
+				Files:      files,
+				Bytes:      tmp.Bytes + res.Bytes,
+			}
+		}
+	}
+
+	language := []LanguageSummary{}
+	for _, summary := range languages {
+		language = append(language, summary)
+	}
+
+	language = sortLanguageSummary(language)
+	records := [][]string{{
+		"Language",
+		"Files",
+		"Lines",
+		"Comments",
+		"Code",
+		"Complexity"},
+	}
+
+	for _, result := range language {
+		records = append(records, []string{
+			result.Name,
+			fmt.Sprint(len(result.Files)),
+			fmt.Sprint(result.Lines),
+			fmt.Sprint(result.Blank),
+			fmt.Sprint(result.Comment),
+			fmt.Sprint(result.Code),
+			fmt.Sprint(result.Complexity)})
+	}
+
+	records = append(records, []string{
+		"Total",
+		fmt.Sprint(sumFiles),
+		fmt.Sprint(sumLines),
+		fmt.Sprint(sumBlank),
+		fmt.Sprint(sumComment),
+		fmt.Sprint(sumCode),
+		fmt.Sprint(sumComplexity)})
+
+	b := &bytes.Buffer{}
+	w := csv.NewWriter(b)
+	w.WriteAll(records)
+	w.Flush()
+
+	return b.String()
+}
+
 func toHtml(input chan *FileJob) string {
 	return `<html lang="en"><head><meta charset="utf-8" /><title>scc html output</title><style>table { border-collapse: collapse; }td, th { border: 1px solid #999; padding: 0.5rem; text-align: left;}</style></head><body>` +
 		toHtmlTable(input) +
@@ -405,7 +497,7 @@ func toHtmlTable(input chan *FileJob) string {
 		<th>%d</th>
 		<th>%d</th>
 		<th>%d</th>
-    	<th>%d</th>
+		<th>%d</th>
 	</tr></tfoot>
 	</table>`, sumFiles, sumLines, sumBlank, sumComment, sumCode, sumComplexity, sumBytes))
 
@@ -486,6 +578,8 @@ func fileSummarize(input chan *FileJob) string {
 		return toClocYAML(input)
 	case strings.ToLower(Format) == "csv":
 		return toCSV(input)
+	case strings.ToLower(Format) == "csv-table":
+		return toCSVTable(input)
 	case strings.ToLower(Format) == "html":
 		return toHtml(input)
 	case strings.ToLower(Format) == "html-table":
@@ -537,6 +631,8 @@ func fileSummarizeMulti(input chan *FileJob) string {
 				val = toClocYAML(i)
 			case "csv":
 				val = toCSV(i)
+			case "csv-table":
+				val = toCSVTable(i)
 			case "html":
 				val = toHtml(i)
 			case "html-table":
