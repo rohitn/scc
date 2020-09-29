@@ -289,7 +289,7 @@ func toCSV(input chan *FileJob) string {
 	return b.String()
 }
 
-// TODO: Write tests for toCSVTable
+// TODO: The formatters have a lot of duplicated code. Refactor to separate generation and formatting
 func toCSVTable(input chan *FileJob) string {
 	languages := map[string]LanguageSummary{}
 	var sumFiles, sumLines, sumCode, sumComment, sumBlank, sumComplexity, sumBytes int64 = 0, 0, 0, 0, 0, 0, 0
@@ -348,6 +348,7 @@ func toCSVTable(input chan *FileJob) string {
 		"Language",
 		"Files",
 		"Lines",
+		"Blanks",
 		"Comments",
 		"Code",
 		"Complexity"},

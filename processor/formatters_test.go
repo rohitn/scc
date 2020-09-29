@@ -731,6 +731,34 @@ func TestFileSummarizeCsv(t *testing.T) {
 	}
 }
 
+func TestFileSummarizeCSVTable(t *testing.T) {
+	inputChan := make(chan *FileJob, 1000)
+	inputChan <- &FileJob{
+		Language:           "Go",
+		Filename:           "bbbb.go",
+		Extension:          "go",
+		Location:           "./",
+		Bytes:              1000,
+		Lines:              1000,
+		Code:               1000,
+		Comment:            1000,
+		Blank:              1000,
+		Complexity:         1000,
+		WeightedComplexity: 1000,
+		Binary:             false,
+	}
+
+	close(inputChan)
+	Format = "csv-table"
+	More = false
+	res := fileSummarize(inputChan)
+
+	// Should not contain filename
+	if strings.Contains(res, `bbbb.go`) {
+		t.Error("Expected CSV-table return", res)
+	}
+}
+
 func TestFileSummarizeYaml(t *testing.T) {
 	inputChan := make(chan *FileJob, 1000)
 	inputChan <- &FileJob{
